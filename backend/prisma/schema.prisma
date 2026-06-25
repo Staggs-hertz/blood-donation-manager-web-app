@@ -16,7 +16,6 @@ datasource db {
 enum Role {
   ADMIN
   DONOR
-  HOSPITAL
 }
 
 enum BloodGroup {
@@ -24,245 +23,42 @@ enum BloodGroup {
   A_NEG
   B_POS
   B_NEG
-  AB_POS
-  AB_NEG
   O_POS
   O_NEG
 }
 
-enum DonationStatus {
-  PENDING
-  APPROVED
-  COMPLETED
-  CANCELLED
-  REJECTED
-}
-
-enum AppointmentStatus {
-  SCHEDULED
-  CONFIRMED
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-}
-
-enum RequestStatus {
-  OPEN
-  MATCHED
-  FULFILLED
-  CANCELLED
-  EXPIRED
-}
-
-enum UrgencyLevel {
-  NORMAL
-  URGENT
-  CRITICAL
-}
-
-enum InventoryStatus {
-  AVAILABLE
-  RESERVED
-  EXPIRED
-  USED
-}
-
-// models
 model User {
-  id               String    @id @default(uuid())
-  email            String    @unique
-  password         String
-  role             Role      @default(DONOR)
-  isActive         Boolean   @default(true)
-  isEmailVerified  Boolean   @default(false)
-  emailVerifyToken String?
-  resetToken       String?
-  resetTokenExpiry DateTime?
-  fcmToken         String? // Firebase Cloud Messaging token (React Native push notifications)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
+  role     Role   @default(DONOR)
 
-  donor         Donor?
-  hospital      Hospital?
-  notifications Notification[]
-  // chatMessages  ChatMessage[]
+  donor Donor?
 
-  @@map("users")
+  createdAt DateTime @default(now())
 }
 
 model Donor {
-  id               String     @id @default(uuid())
-  userId           String     @unique
-  user             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  firstName        String
-  lastName         String
-  phone            String?
-  dateOfBirth      DateTime
-  gender           String
-  bloodGroup       BloodGroup
-  weight           Float?
-  address          String?
-  city             String?
-  state            String?
-  country          String     @default("Nigeria")
-  isEligible       Boolean    @default(true)
-  lastDonationDate DateTime?
-  totalDonations   Int        @default(0)
-  medicalHistory   String?
-  emergencyContact String?
-  avatarUrl        String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  id         String     @id @default(uuid())
+  userId     String     @unique
+  user       User       @relation(fields: [userId], references: [id])
+  firstName  String
+  lastName   String
+  gender     String
+  bloodGroup BloodGroup
+  location   String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
-  donations    Donation[]
-  appointments Appointment[]
-  matches      DonationMatch[]
-
-  @@map("donors")
-}
-
-model Hospital {
-  id             String   @id @default(uuid())
-  userId         String   @unique
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name           String
-  registrationNo String   @unique
-  phone          String
-  address        String
-  city           String
-  state          String
-  country        String   @default("Nigeria")
-  isVerified     Boolean  @default(false)
-  contactPerson  String?
-  website        String?
-  logoUrl        String?
-  latitude       Float? // For proximity-based donor matching in mobile app
-  longitude      Float?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  bloodRequests BloodRequest[]
-  appointments  Appointment[]
-  inventory     BloodInventory[]
-
-  @@map("hospitals")
-}
-
-model BloodInventory {
-  id            String          @id @default(uuid())
-  hospitalId    String
-  hospital      Hospital        @relation(fields: [hospitalId], references: [id])
-  bloodGroup    BloodGroup
-  units         Float
-  collectedDate DateTime
-  expiryDate    DateTime
-  status        InventoryStatus @default(AVAILABLE)
-  donationId    String?
-  donation      Donation?       @relation(fields: [donationId], references: [id])
-  notes         String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-
-  @@map("blood_inventory")
-}
-
-model Donation {
-  id              String         @id @default(uuid())
-  donorId         String
-  donor           Donor          @relation(fields: [donorId], references: [id])
-  status          DonationStatus @default(PENDING)
-  bloodGroup      BloodGroup
-  units           Float          @default(1.0)
-  donationDate    DateTime?
-  notes           String?
-  hemoglobinLevel Float?
-  bloodPressure   String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  appointment Appointment?
-  inventory   BloodInventory[]
-  matches     DonationMatch[]
-
-  @@map("donations")
+  requests BloodRequest[]
 }
 
 model BloodRequest {
-  id          String        @id @default(uuid())
-  hospitalId  String
-  hospital    Hospital      @relation(fields: [hospitalId], references: [id])
-  bloodGroup  BloodGroup
-  units       Float
-  urgency     UrgencyLevel  @default(NORMAL)
-  status      RequestStatus @default(OPEN)
-  patientName String?
-  requiredBy  DateTime?
-  notes       String?
-  fulfilledAt DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  matches DonationMatch[]
-
-  @@map("blood_requests")
+  id         String     @id @default(uuid())
+  bloodGroup BloodGroup
+  location   String
+  message    String
+  createdAt  DateTime   @default(now())
+  donor      Donor?     @relation(fields: [donorId], references: [id])
+  donorId    String?
 }
-
-model DonationMatch {
-  id          String       @id @default(uuid())
-  donorId     String
-  donor       Donor        @relation(fields: [donorId], references: [id])
-  requestId   String
-  request     BloodRequest @relation(fields: [requestId], references: [id])
-  donationId  String?
-  donation    Donation?    @relation(fields: [donationId], references: [id])
-  matchedAt   DateTime     @default(now())
-  confirmedAt DateTime?
-  notes       String?
-
-  @@unique([donorId, requestId])
-  @@map("donation_matches")
-}
-
-model Appointment {
-  id           String            @id @default(uuid())
-  donorId      String
-  donor        Donor             @relation(fields: [donorId], references: [id])
-  hospitalId   String
-  hospital     Hospital          @relation(fields: [hospitalId], references: [id])
-  donationId   String?           @unique
-  donation     Donation?         @relation(fields: [donationId], references: [id])
-  scheduledAt  DateTime
-  status       AppointmentStatus @default(SCHEDULED)
-  notes        String?
-  reminderSent Boolean           @default(false)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-
-  @@map("appointments")
-}
-
-model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  message   String
-  type      String // DONATION, APPOINTMENT, MATCH, SYSTEM, ALERT
-  isRead    Boolean  @default(false)
-  metadata  Json?
-  createdAt DateTime @default(now())
-
-  @@map("notifications")
-}
-
-// model ChatMessage {
-//   id        String   @id @default(uuid())
-//   userId    String
-//   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-//   role      String // 'user' | 'assistant'
-//   content   String
-//   sessionId String
-//   createdAt DateTime @default(now())
-
-//   @@map("chat_messages")
-// }

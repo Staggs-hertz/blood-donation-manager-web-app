@@ -95,3 +95,7 @@ test-results/
 cypress/videos/
 cypress/screenshots/
 
+# ==========================================
+# Prisma
+# ==========================================
+/src/generated/prisma
